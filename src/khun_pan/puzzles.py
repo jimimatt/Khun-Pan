@@ -1,6 +1,6 @@
 import numpy as np
 from collections import namedtuple
-from khunpan import GameBoard
+from src.khun_pan.khunpan import GameBoard
 
 
 Puzzle = namedtuple("Puzzle", ['board', 'optimal_solution'])
@@ -232,7 +232,7 @@ def advanced_exercise_8():
 
 if __name__ == '__main__':
     from time import time
-    from khunpan import KhunPanEscape
+    from src.khun_pan.khunpan import KhunPanEscape
 
     simple_exercises = {
         "simple exercise 1": simple_exercise_1(),

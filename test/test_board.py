@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from khunpan import ShiftDirection, Board, classic_board
+from src.khun_pan.khunpan import ShiftDirection, Board
 
 
 @pytest.mark.parametrize("adjacent_spaces, shiftdirection, aligned_spaces", [
