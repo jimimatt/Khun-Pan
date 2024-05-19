@@ -1,3 +1,5 @@
+import bisect
+
 import numpy as np
 from collections import deque, namedtuple
 from enum import Enum, IntEnum
@@ -29,7 +31,7 @@ class Adjacency(Enum):
 GameBoard = namedtuple('GameBoard', ['board', 'spaces'])
 
 
-def start_board():
+def classic_board():
     board = np.zeros([7, 6], dtype=int)
     board[:, 0] = Tile.BORDER
     board[:, -1] = Tile.BORDER
@@ -50,7 +52,7 @@ def start_board():
 
 class Board:
 
-    def __init__(self, board=start_board()):
+    def __init__(self, board=classic_board()):
         board = deepcopy(board)
         self.board = board.board
         self.spaces = board.spaces
@@ -342,7 +344,7 @@ class KhunPanBoard:
         southleft = Board.get_south_coord(spaces[0])
         southright = Board.get_south_coord(spaces[1])
         southwest = Board.get_west_coord(southleft)
-        southeast = Board.get_east_coord(southleft)
+        southeast = Board.get_east_coord(southright)
         south_a_tile = self.board.get_tile(southleft)
         south_b_tile = self.board.get_tile(southright)
         sw_tile = self.board.get_tile(southwest)
@@ -407,24 +409,20 @@ class KhunPanBoard:
 
 class KhunPanEscape:
 
-    def __init__(self):
+    def __init__(self, board: GameBoard = None):
         self.moves = deque()
         self.processed_moves = []
         self.serialized_moves = []
         start = KhunPanBoard()
-        self.win_id = -1
+        if board is not None:
+            start = KhunPanBoard(board=Board(board))
         self.add_move(start)
 
-    def add_move(self, move: KhunPanBoard) -> bool:
+    def add_move(self, move: KhunPanBoard):
         ser = move.board.encode()
-        if ser not in self.serialized_moves:
-            self.serialized_moves.append(ser)
+        if bisect.bisect(self.serialized_moves, ser) == bisect.bisect_left(self.serialized_moves, ser):
+            bisect.insort(self.serialized_moves, ser)
             self.moves.append(move)
-        if move.is_won():
-            self.win_id = move.id
-            self.processed_moves.append(move)
-            return True
-        return False
 
     def solve(self):
         won = False
@@ -433,17 +431,22 @@ class KhunPanEscape:
             self.processed_moves.append(board)
             moves = board.get_moves()
             for m in moves:
-                won = self.add_move(KhunPanBoard(board=m, predecessor=board.id))
+                if m.check_win_condition():
+                    self.processed_moves.append(KhunPanBoard(board=m, predecessor=board.id))
+                    won = True
+                    break
+                else:
+                    self.add_move(KhunPanBoard(board=m, predecessor=board.id))
         print("Game finished.")
 
-    def get_solution(self) -> list[KhunPanBoard]:
+    def get_solution(self, win_board: KhunPanBoard = None) -> list[KhunPanBoard]:
         solution = []
-        ids = [x.id for x in self.processed_moves]
-        move = self.processed_moves[ids.index(self.win_id)]
+        move = self.processed_moves[-1]
+        if win_board is not None:
+            move = win_board
         while move.predecessor > 0:
             solution.append(move)
-            move = self.processed_moves[ids.index(move.predecessor)]
-        solution.append(move)
+            move = self.processed_moves[bisect.bisect_left(self.processed_moves, move.predecessor, key=lambda x: x.id)]
         solution.reverse()
         return solution
 
