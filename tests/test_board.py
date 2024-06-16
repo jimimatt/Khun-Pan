@@ -29,7 +29,7 @@ def test_align_spaces(
 @pytest.mark.parametrize(
     "array, shape", [(np.empty((4, 4)), (2, 2)), (np.empty((7, 6)), (5, 4))]
 )
-def test_crop_board(array: tuple[int, int], shape: tuple[int, int]) -> None:
+def test_crop_board(array: np.array, shape: tuple[int, int]) -> None:
     """Test crop_board method."""
     assert Board.crop_board(array).shape == shape
 
