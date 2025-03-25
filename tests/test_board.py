@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from src.khun_pan.khunpan import Board, ShiftDirection
+from khun_pan.khunpan import Board, ShiftDirection
 
 
 @pytest.mark.parametrize(
@@ -26,9 +26,7 @@ def test_align_spaces(
     assert Board.align_spaces(adjacent_spaces, shiftdirection) == aligned_spaces
 
 
-@pytest.mark.parametrize(
-    "array, shape", [(np.empty((4, 4)), (2, 2)), (np.empty((7, 6)), (5, 4))]
-)
+@pytest.mark.parametrize("array, shape", [(np.empty((4, 4)), (2, 2)), (np.empty((7, 6)), (5, 4))])
 def test_crop_board(array: np.array, shape: tuple[int, int]) -> None:
     """Test crop_board method."""
     assert Board.crop_board(array).shape == shape
@@ -36,7 +34,9 @@ def test_crop_board(array: np.array, shape: tuple[int, int]) -> None:
 
 def test_shift_horizontal_h() -> None:
     """Test shift_horizontal_h method."""
-    board = Board()
+    from khun_pan.khunpan import classic_board
+
+    board = Board(board=classic_board())
     board.shift_horizontal_h((3, 1), ShiftDirection.LEFT)
     reference_left_shift = np.array(
         [

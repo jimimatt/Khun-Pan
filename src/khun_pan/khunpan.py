@@ -60,7 +60,7 @@ def classic_board() -> GameBoard:
 class Board:
     """Class for the Khun Pan board."""
 
-    def __init__(self, board: GameBoard = classic_board()) -> None:
+    def __init__(self, board: GameBoard) -> None:
         """Initialize the board."""
         board = deepcopy(board)
         self.board = board.board
@@ -72,7 +72,7 @@ class Board:
             string += " ".join([str(x) for x in row]) + "\n"
         return string
 
-    def get_tile(self, coord: tuple[int, int]) -> int:
+    def get_tile(self, coord: tuple[int, int]) -> Tile:
         """Get the tile at the given coordinates."""
         return self.board[coord]
 
@@ -101,9 +101,7 @@ class Board:
         return coord[0], coord[1] - 1
 
     @staticmethod
-    def align_spaces(
-        spaces: list[tuple[int, int]], direction: ShiftDirection
-    ) -> list[tuple[int, int]]:
+    def align_spaces(spaces: list[tuple[int, int]], direction: ShiftDirection) -> list[tuple[int, int]]:
         """Align the spaces based on the shift direction."""
 
         def swap_spaces(space_list: list[tuple[int, int]]) -> list[tuple[int, int]]:
@@ -136,13 +134,13 @@ class Board:
             pos = (space[0], space[1] + 1)
         elif direction == ShiftDirection.RIGHT:
             pos = (space[0], space[1] - 1)
+        else:
+            raise ValueError("Invalid direction.")
         self.board[pos] = Tile.EMPTY
         self.board[space] = tile
         self.spaces.append(pos)
 
-    def shift_single_twice(
-        self, spaces: list[tuple[int, int], tuple[int, int]], direction: ShiftDirection
-    ) -> None:
+    def shift_single_twice(self, spaces: list[tuple[int, int]], direction: ShiftDirection) -> None:
         """Shift two single tiles in the given direction."""
         spaces = Board.align_spaces(spaces, direction)
         for space in spaces:
@@ -162,13 +160,13 @@ class Board:
         elif direction == ShiftDirection.DOWN:
             new_space = (space[0] - 2, space[1])
             pos = (slice(space[0] - 1, space[0] + 1), space[1])
+        else:
+            raise ValueError("Invalid direction.")
         self.board[new_space] = Tile.EMPTY
         self.board[pos] = tile
         self.spaces.append(new_space)
 
-    def shift_vertical_v_twice(
-        self, spaces: list[tuple[int, int], tuple[int, int]], direction: ShiftDirection
-    ) -> None:
+    def shift_vertical_v_twice(self, spaces: list[tuple[int, int]], direction: ShiftDirection) -> None:
         """Shift two vertical tiles in the given direction."""
         spaces = Board.align_spaces(spaces, direction)
         for space in spaces:
@@ -188,35 +186,29 @@ class Board:
         elif direction == ShiftDirection.RIGHT:
             new_space = (space[0], space[1] - 2)
             pos = (space[0], slice(space[1] - 1, space[1] + 1))
+        else:
+            raise ValueError("Invalid direction.")
         self.board[new_space] = Tile.EMPTY
         self.board[pos] = tile
         self.spaces.append(new_space)
 
-    def shift_horizontal_h_twice(
-        self, spaces: list[tuple[int, int], tuple[int, int]], direction: ShiftDirection
-    ) -> None:
+    def shift_horizontal_h_twice(self, spaces: list[tuple[int, int]], direction: ShiftDirection) -> None:
         """Shift two horizontal tiles in the given direction."""
         spaces = Board.align_spaces(spaces, direction)
         for space in spaces:
             self.shift_horizontal_h(space, direction)
 
-    def shift_vertical_h(
-        self, spaces: list[tuple[int, int], tuple[int, int]], direction: ShiftDirection
-    ) -> None:
+    def shift_vertical_h(self, spaces: list[tuple[int, int]], direction: ShiftDirection) -> None:
         """Shift two vertical tiles in the given direction."""
         for space in spaces:
             self.shift_single(space, direction, Tile.VERTICAL)
 
-    def shift_horizontal_v(
-        self, spaces: list[tuple[int, int], tuple[int, int]], direction: ShiftDirection
-    ) -> None:
+    def shift_horizontal_v(self, spaces: list[tuple[int, int]], direction: ShiftDirection) -> None:
         """Shift two horizontal tiles in the given direction."""
         for space in spaces:
             self.shift_single(space, direction, Tile.HORIZONTAL)
 
-    def shift_khunpan(
-        self, spaces: list[tuple[int, int], tuple[int, int]], direction: ShiftDirection
-    ) -> None:
+    def shift_khunpan(self, spaces: list[tuple[int, int]], direction: ShiftDirection) -> None:
         """Shift two khunpan tiles in the given direction."""
         for space in spaces:
             if direction == ShiftDirection.UP or direction == ShiftDirection.DOWN:
@@ -231,13 +223,13 @@ class Board:
         i = 0
         for row in board:
             for tile in row:
-                tile_pos = np.left_shift(tile, i, dtype=np.uint64)
+                tile_pos = np.left_shift(np.uint64(tile), i, dtype=np.uint64)
                 ser += np.uint64(tile_pos)
                 i += 3
         return ser
 
     @staticmethod
-    def decode(ser_board: np.uint64, shape: list[int, int] = (5, 4)) -> GameBoard:
+    def decode(ser_board: np.uint64, shape: list[Tile]) -> GameBoard:
         """Decode a 64-bit integer to a board."""
         board = np.empty(shape, dtype=int)
         spaces = []
@@ -261,9 +253,7 @@ class Board:
     @staticmethod
     def frame_board(board: np.ndarray) -> np.ndarray:
         """Frame the board with a border."""
-        framed_board = np.full(
-            [board.shape[0] + 2, board.shape[1] + 2], fill_value=Tile.BORDER, dtype=int
-        )
+        framed_board = np.full([board.shape[0] + 2, board.shape[1] + 2], fill_value=Tile.BORDER, dtype=int)
         framed_board[1:-1, 1:-1] = board
         return framed_board
 
@@ -273,8 +263,10 @@ class KhunPanBoard:
 
     instance_count = 0
 
-    def __init__(self, board: Board = Board(), predecessor: int = 0) -> None:
+    def __init__(self, board: Board | None = None, predecessor: int = 0) -> None:
         """Initialize the board."""
+        if board is None:
+            board = Board(board=classic_board())
         KhunPanBoard.instance_count += 1
         self.id = self.instance_count
         self.board = board
@@ -296,34 +288,24 @@ class KhunPanBoard:
         if tile == Tile.SINGLE:
             board.shift_single(space, direction)
             boards.append(board)
-        elif tile == Tile.VERTICAL and (
-            direction == ShiftDirection.UP or direction == ShiftDirection.DOWN
-        ):
+        elif tile == Tile.VERTICAL and (direction == ShiftDirection.UP or direction == ShiftDirection.DOWN):
             board.shift_vertical_v(space, direction)
             boards.append(board)
-        elif tile == Tile.HORIZONTAL and (
-            direction == ShiftDirection.LEFT or direction == ShiftDirection.RIGHT
-        ):
+        elif tile == Tile.HORIZONTAL and (direction == ShiftDirection.LEFT or direction == ShiftDirection.RIGHT):
             board.shift_horizontal_h(space, direction)
             boards.append(board)
         return boards
 
-    def get_double_move(
-        self, boards: list[Board], tile: Tile, direction: ShiftDirection
-    ) -> list[Board]:
+    def get_double_move(self, boards: list[Board], tile: Tile, direction: ShiftDirection) -> list[Board]:
         """Get the board after a double move in the given direction."""
         board = deepcopy(self.board)
         if tile == Tile.SINGLE:
             board.shift_single_twice(self.board.spaces, direction)
             boards.append(board)
-        elif tile == Tile.VERTICAL and (
-            direction == ShiftDirection.UP or direction == ShiftDirection.DOWN
-        ):
+        elif tile == Tile.VERTICAL and (direction == ShiftDirection.UP or direction == ShiftDirection.DOWN):
             board.shift_vertical_v_twice(self.board.spaces, direction)
             boards.append(board)
-        elif tile == Tile.HORIZONTAL and (
-            direction == ShiftDirection.LEFT or direction == ShiftDirection.RIGHT
-        ):
+        elif tile == Tile.HORIZONTAL and (direction == ShiftDirection.LEFT or direction == ShiftDirection.RIGHT):
             board.shift_horizontal_h_twice(self.board.spaces, direction)
             boards.append(board)
         return boards
@@ -345,15 +327,11 @@ class KhunPanBoard:
             and not (nw_tile == Tile.VERTICAL and sw_tile == Tile.VERTICAL)
         ):
             board = deepcopy(self.board)
-            board.shift_vertical_h(
-                spaces=self.board.spaces, direction=ShiftDirection.RIGHT
-            )
+            board.shift_vertical_h(spaces=self.board.spaces, direction=ShiftDirection.RIGHT)
             boards.append(board)
         elif west_a_tile == Tile.KHUNPAN and west_b_tile == Tile.KHUNPAN:
             board = deepcopy(self.board)
-            board.shift_khunpan(
-                spaces=self.board.spaces, direction=ShiftDirection.RIGHT
-            )
+            board.shift_khunpan(spaces=self.board.spaces, direction=ShiftDirection.RIGHT)
             boards.append(board)
         if west_a_tile == Tile.SINGLE:
             board = deepcopy(self.board)
@@ -379,9 +357,7 @@ class KhunPanBoard:
             and not (ne_tile == Tile.VERTICAL and se_tile == Tile.VERTICAL)
         ):
             board = deepcopy(self.board)
-            board.shift_vertical_h(
-                spaces=self.board.spaces, direction=ShiftDirection.LEFT
-            )
+            board.shift_vertical_h(spaces=self.board.spaces, direction=ShiftDirection.LEFT)
             boards.append(board)
         elif east_a_tile == Tile.KHUNPAN and east_b_tile == Tile.KHUNPAN:
             board = deepcopy(self.board)
@@ -416,9 +392,7 @@ class KhunPanBoard:
             and not (nw_tile == Tile.HORIZONTAL and ne_tile == Tile.HORIZONTAL)
         ):
             board = deepcopy(self.board)
-            board.shift_horizontal_v(
-                spaces=self.board.spaces, direction=ShiftDirection.DOWN
-            )
+            board.shift_horizontal_v(spaces=self.board.spaces, direction=ShiftDirection.DOWN)
             boards.append(board)
         elif north_a_tile == Tile.KHUNPAN and north_b_tile == Tile.KHUNPAN:
             board = deepcopy(self.board)
@@ -448,9 +422,7 @@ class KhunPanBoard:
             and not (sw_tile == Tile.HORIZONTAL and se_tile == Tile.HORIZONTAL)
         ):
             board = deepcopy(self.board)
-            board.shift_horizontal_v(
-                spaces=self.board.spaces, direction=ShiftDirection.UP
-            )
+            board.shift_horizontal_v(spaces=self.board.spaces, direction=ShiftDirection.UP)
             boards.append(board)
         elif south_a_tile == Tile.KHUNPAN and south_b_tile == Tile.KHUNPAN:
             board = deepcopy(self.board)
@@ -471,7 +443,7 @@ class KhunPanBoard:
     def get_moves(self) -> list[Board]:
         """Get the possible moves for the board."""
         adjacent_spaces = Adjacency.NON
-        boards = []
+        boards: list[Board] = []
         for space in self.board.spaces:
             east_tile = self.board.get_tile(Board.get_east_coord(space))
             boards = self.get_move(boards, space, east_tile, ShiftDirection.LEFT)
@@ -509,11 +481,11 @@ class KhunPanBoard:
 class KhunPanEscape:
     """Class for the Khun Pan escape game."""
 
-    def __init__(self, board: GameBoard = None) -> None:
+    def __init__(self, board: GameBoard | None = None) -> None:
         """Initialize the game."""
-        self.moves = deque()
-        self.processed_moves = []
-        self.serialized_moves = []
+        self.moves = deque[KhunPanBoard]()
+        self.processed_moves: list[KhunPanBoard] = []
+        self.serialized_moves: list[np.uint64] = []
         start = KhunPanBoard()
         if board is not None:
             start = KhunPanBoard(board=Board(board))
@@ -522,9 +494,7 @@ class KhunPanEscape:
     def add_move(self, move: KhunPanBoard) -> None:
         """Add a move to the game."""
         ser = move.board.encode()
-        if bisect.bisect(self.serialized_moves, ser) == bisect.bisect_left(
-            self.serialized_moves, ser
-        ):
+        if bisect.bisect(self.serialized_moves, ser) == bisect.bisect_left(self.serialized_moves, ser):
             bisect.insort(self.serialized_moves, ser)
             self.moves.append(move)
 
@@ -537,16 +507,14 @@ class KhunPanEscape:
             moves = board.get_moves()
             for m in moves:
                 if m.check_win_condition():
-                    self.processed_moves.append(
-                        KhunPanBoard(board=m, predecessor=board.id)
-                    )
+                    self.processed_moves.append(KhunPanBoard(board=m, predecessor=board.id))
                     won = True
                     break
                 else:
                     self.add_move(KhunPanBoard(board=m, predecessor=board.id))
         print("Game finished.")
 
-    def get_solution(self, win_board: KhunPanBoard = None) -> list[KhunPanBoard]:
+    def get_solution(self, win_board: KhunPanBoard | None = None) -> list[KhunPanBoard]:
         """Get the solution for the game."""
         solution = []
         move = self.processed_moves[-1]
@@ -554,11 +522,7 @@ class KhunPanEscape:
             move = win_board
         while move.predecessor > 0:
             solution.append(move)
-            move = self.processed_moves[
-                bisect.bisect_left(
-                    self.processed_moves, move.predecessor, key=lambda x: x.id
-                )
-            ]
+            move = self.processed_moves[bisect.bisect_left(self.processed_moves, move.predecessor, key=lambda x: x.id)]
         solution.reverse()
         return solution
 
@@ -574,11 +538,13 @@ class KhunPanEscape:
 if __name__ == "__main__":
     import time
 
+    from halo import Halo
+
     start = time.time()
     game = KhunPanEscape()
-    game.solve()
-    end1 = time.time()
+    with Halo(text='Solving', spinner='dots') as spinner:
+        game.solve()
+    spinner.stop_and_persist(symbol='🦄'.encode(), text='Wow!')
+    end = time.time()
     KhunPanEscape.print_solution(game.get_solution())
-    end2 = time.time()
-    print(end1 - start)
-    print(end2 - start)
+    print(f'Solved in {end - start:.6f} seconds.')

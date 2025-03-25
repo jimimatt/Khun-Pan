@@ -297,6 +297,8 @@ def advanced_exercise_8() -> Puzzle:
 if __name__ == "__main__":
     from time import time
 
+    from halo import Halo
+
     from src.khun_pan.khunpan import KhunPanEscape
 
     simple_exercises = {
@@ -325,7 +327,8 @@ if __name__ == "__main__":
         print(name)
         game = KhunPanEscape(puzzle.board)
         start = time()
-        game.solve()
+        with Halo(text='Solving', spinner='dots'):
+            game.solve()
         end = time()
         print(f"elapsed time: {end - start:f}")
         solution = game.get_solution()
